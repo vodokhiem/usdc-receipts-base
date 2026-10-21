@@ -95,30 +95,22 @@ export interface ScanWindow {
 }
 
 /**
- * Decide which blocks to scan this run.
- * - never above `head - confirmations`
+ * Decide which blocks to scan this run, given the highest block we are willing to store (`head`).
  * - first run: look back `lookback` blocks
  * - later runs: resume from the cursor minus `overlap` so a shallow reorg is re-read
  * Returns null when there is nothing new to scan.
  */
-export function scanWindow(opts: {
-  head: bigint;
-  cursor: bigint | null;
-  confirmations: number;
-  overlap: number;
-  lookback: number;
-}): ScanWindow | null {
-  const safeHead = opts.head - BigInt(opts.confirmations);
-  if (safeHead < 0n) return null;
+export function scanWindow(opts: { head: bigint; cursor: bigint | null; overlap: number; lookback: number }): ScanWindow | null {
+  if (opts.head < 0n) return null;
   let from: bigint;
   if (opts.cursor == null) {
-    from = safeHead - BigInt(opts.lookback);
+    from = opts.head - BigInt(opts.lookback);
   } else {
     from = opts.cursor + 1n - BigInt(opts.overlap);
   }
   if (from < 0n) from = 0n;
-  if (from > safeHead) return null;
-  return { fromBlock: from, toBlock: safeHead };
+  if (from > opts.head) return null;
+  return { fromBlock: from, toBlock: opts.head };
 }
 
 /** Split [from, to] (inclusive) into inclusive chunks of at most `size` blocks. */

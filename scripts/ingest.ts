@@ -18,7 +18,7 @@ async function main() {
   const results = await ingestAll(db, viemChainReader(publicClient()), { log: (m) => console.log(m) });
   for (const r of results) {
     console.log(
-      `${r.address}: blocks ${r.fromBlock ?? "-"}..${r.toBlock ?? "-"} transfers=${r.logsFound} upserted=${r.rowsUpserted}${r.error ? ` ERROR ${r.error}` : ""}`,
+      `${r.address}: blocks ${r.fromBlock ?? "-"}..${r.toBlock ?? "-"} transfers=${r.logsFound} written=${r.rowsWritten} removed=${r.rowsDeleted}${r.skipped ? ` skipped=${r.skipped}` : ""}${r.error ? ` ERROR ${r.error}` : ""}`,
     );
   }
   process.exit(results.some((r) => r.error) ? 1 : 0);

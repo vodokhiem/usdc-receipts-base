@@ -3,6 +3,7 @@ import { desc, eq, and } from "drizzle-orm";
 import { getAddress, isAddress, type Address } from "viem";
 import { getDb } from "@/db";
 import { ingestRuns, receipts, watchedAddresses } from "@/db/schema";
+import { ingestConfig } from "@/lib/env";
 
 export async function listWatched() {
   const db = await getDb();
@@ -13,6 +14,12 @@ export async function addWatched(raw: string, label?: string): Promise<Address> 
   if (!isAddress(raw)) throw new Error("not a valid EVM address");
   const address = getAddress(raw);
   const db = await getDb();
+  const existing = await db.select({ address: watchedAddresses.address }).from(watchedAddresses);
+  if (existing.some((w) => w.address === address)) return address;
+  const max = ingestConfig().maxWatched;
+  if (existing.length >= max) {
+    throw new Error(`this demo watches at most ${max} addresses; pick one of the existing ones`);
+  }
   await db
     .insert(watchedAddresses)
     .values({ address, label: label?.trim() || null })
@@ -30,13 +37,14 @@ export async function receiptsFor(address: Address, limit = 100) {
     .limit(limit);
 }
 
-export async function receiptByKey(txHash: string, logIndex: number) {
+/** One row per watched side of the transfer (two when both parties are watched). */
+export async function receiptRows(txHash: string, logIndex: number) {
   const db = await getDb();
-  const rows = await db
+  return db
     .select()
     .from(receipts)
-    .where(and(eq(receipts.txHash, txHash), eq(receipts.logIndex, logIndex)));
-  return rows[0] ?? null;
+    .where(and(eq(receipts.txHash, txHash), eq(receipts.logIndex, logIndex)))
+    .orderBy(receipts.watchedAddress);
 }
 
 export async function latestRuns(limit = 10) {

@@ -11,8 +11,9 @@ export default function Home() {
       <section className="space-y-3">
         <h1 className="text-2xl font-semibold">Confirmed USDC transfers on Base, as receipts</h1>
         <p className="text-neutral-600 dark:text-neutral-400 max-w-2xl">
-          Add an address. The ingester reads USDC <code>Transfer</code> events for it from Base, waits for
-          confirmations, and stores each one keyed by <code>(tx, logIndex)</code> so re-runs are no-ops.
+          Add an address. The ingester reads USDC <code>Transfer</code> events for it up to Base&apos;s <code>safe</code> block,
+          stores each one keyed by <code>(tx, logIndex)</code>, and re-checks the last 32 blocks every run so a reorg
+          removes or rewrites rows instead of leaving stale ones.
         </p>
         <form action={watchAddress} className="flex flex-col sm:flex-row gap-2 max-w-2xl">
           <input
@@ -83,7 +84,7 @@ async function Runs() {
             <td className="py-1 pr-3">
               {r.fromBlock?.toString()}–{r.toBlock?.toString()}
             </td>
-            <td className="py-1 pr-3">{r.logsFound} transfers</td>
+            <td className="py-1 pr-3">{r.logsFound} transfers{r.rowsDeleted ? `, ${r.rowsDeleted} removed` : ""}</td>
             <td className="py-1 text-rose-600">{r.error ? `error: ${r.error.slice(0, 80)}` : ""}</td>
           </tr>
         ))}

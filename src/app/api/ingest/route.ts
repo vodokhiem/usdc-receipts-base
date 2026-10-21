@@ -7,6 +7,9 @@ import { publicClient } from "@/lib/chain";
 import { cronSecret } from "@/lib/env";
 import { ingestAll, viemChainReader } from "@/lib/ingest";
 
+// Vercel function limit; INGEST_TIME_BUDGET_MS (40 s) keeps a run inside it.
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   const secret = cronSecret();
   const auth = request.headers.get("authorization");

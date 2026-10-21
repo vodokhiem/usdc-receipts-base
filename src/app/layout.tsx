@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main className="mx-auto w-full max-w-4xl px-4 py-8 flex-1">{children}</main>
         <footer className="mx-auto max-w-4xl px-4 py-6 text-xs text-neutral-500">
-          Reads only. Rows are written once a transfer has 12 confirmations; each run re-scans the last 32 blocks so a shallow reorg is corrected.
+          Reads only. Rows are written once a transfer is below Base&apos;s safe block; each run re-scans the last 32 blocks and deletes what the chain no longer reports.
         </footer>
       </body>
     </html>

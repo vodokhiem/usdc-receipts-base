@@ -1,5 +1,5 @@
 {
-  "id": "8a549c7c-f3db-4355-826e-c3f79bfc3225",
+  "id": "3b99a385-1e04-4dec-bf77-e5f050be2c45",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -39,8 +39,15 @@
           "notNull": true,
           "default": 0
         },
-        "rows_upserted": {
-          "name": "rows_upserted",
+        "rows_written": {
+          "name": "rows_written",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "rows_deleted": {
+          "name": "rows_deleted",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,

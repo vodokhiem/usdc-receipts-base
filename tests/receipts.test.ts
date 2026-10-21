@@ -66,20 +66,20 @@ describe("parseTransferLog", () => {
 });
 
 describe("scanWindow", () => {
-  const base = { confirmations: 12, overlap: 32, lookback: 1_000 };
-  it("first run looks back from the confirmed head", () => {
-    expect(scanWindow({ ...base, head: 10_000n, cursor: null })).toEqual({ fromBlock: 8_988n, toBlock: 9_988n });
+  const base = { overlap: 32, lookback: 1_000 };
+  it("first run looks back from the given head", () => {
+    expect(scanWindow({ ...base, head: 9_988n, cursor: null })).toEqual({ fromBlock: 8_988n, toBlock: 9_988n });
   });
   it("later runs resume behind the cursor by the overlap", () => {
-    expect(scanWindow({ ...base, head: 10_000n, cursor: 9_988n })).toEqual({ fromBlock: 9_957n, toBlock: 9_988n });
-    expect(scanWindow({ ...base, head: 10_100n, cursor: 9_988n })).toEqual({ fromBlock: 9_957n, toBlock: 10_088n });
+    expect(scanWindow({ ...base, head: 9_988n, cursor: 9_988n })).toEqual({ fromBlock: 9_957n, toBlock: 9_988n });
+    expect(scanWindow({ ...base, head: 10_088n, cursor: 9_988n })).toEqual({ fromBlock: 9_957n, toBlock: 10_088n });
   });
-  it("never scans unconfirmed blocks, and clamps at genesis", () => {
-    expect(scanWindow({ ...base, head: 5n, cursor: null })).toBeNull();
-    expect(scanWindow({ ...base, head: 500n, cursor: null })).toEqual({ fromBlock: 0n, toBlock: 488n });
+  it("clamps at genesis and rejects a negative head", () => {
+    expect(scanWindow({ ...base, head: -5n, cursor: null })).toBeNull();
+    expect(scanWindow({ ...base, head: 488n, cursor: null })).toEqual({ fromBlock: 0n, toBlock: 488n });
   });
-  it("returns null when the cursor is already far ahead (overlap 0)", () => {
-    expect(scanWindow({ ...base, overlap: 0, head: 10_000n, cursor: 9_988n })).toBeNull();
+  it("returns null when the cursor is already at the head and there is no overlap", () => {
+    expect(scanWindow({ ...base, overlap: 0, head: 9_988n, cursor: 9_988n })).toBeNull();
   });
 });
 

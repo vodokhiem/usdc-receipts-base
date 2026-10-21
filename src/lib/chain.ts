@@ -36,6 +36,13 @@ export function publicClient(): BaseClient {
   return cached;
 }
 
+/** Block number for a tag; `safe`/`finalized` come from the chain, `latest` is the sequencer head. */
+export async function headBlockNumber(client: BaseClient, tag: "latest" | "safe" | "finalized"): Promise<bigint> {
+  const block = await client.getBlock({ blockTag: tag });
+  if (block.number == null) throw new Error(`block tag ${tag} has no number`);
+  return block.number;
+}
+
 export async function usdcBalance(client: BaseClient, address: Address): Promise<bigint> {
   return client.readContract({
     address: USDC_ADDRESS,

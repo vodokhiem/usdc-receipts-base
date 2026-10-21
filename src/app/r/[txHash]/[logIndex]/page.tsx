@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Direction } from "@/components/ReceiptTable";
-import { basescanAddress, basescanTx, publicClient } from "@/lib/chain";
-import { isoTime } from "@/lib/format";
+import { basescanAddress, basescanTx, headBlockNumber, publicClient } from "@/lib/chain";
+import { headTag } from "@/lib/env";
+import { isoTime, shortHex } from "@/lib/format";
 import { formatUnitsFixed, formatUsdc } from "@/lib/receipts";
-import { receiptByKey } from "@/lib/queries";
+import { receiptRows } from "@/lib/queries";
 
 export default function ReceiptPage({ params }: { params: Promise<{ txHash: string; logIndex: string }> }) {
   return (
@@ -23,7 +24,9 @@ async function ReceiptView({ params }: { params: Promise<{ txHash: string; logIn
 
 async function Receipt({ txHash, logIndex }: { txHash: string; logIndex: number }) {
   await connection();
-  const r = await receiptByKey(txHash, logIndex);
+  // One transfer, one receipt; a row per watched side only changes the "direction" badges below.
+  const rows = await receiptRows(txHash, logIndex);
+  const r = rows[0];
   if (!r) notFound();
   const json = {
     chain: "base",
@@ -40,10 +43,7 @@ async function Receipt({ txHash, logIndex }: { txHash: string; logIndex: number 
   };
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">Receipt</h1>
-        <Direction d={r.direction} />
-      </div>
+      <h1 className="text-xl font-semibold">Receipt</h1>
       <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
         <dt className="text-neutral-500">Amount</dt>
         <dd className="font-mono text-lg">{formatUsdc(BigInt(r.amountRaw))} USDC</dd>
@@ -51,14 +51,22 @@ async function Receipt({ txHash, logIndex }: { txHash: string; logIndex: number 
         <dd className="font-mono break-all"><a className="underline decoration-neutral-400" href={basescanAddress(r.fromAddress)} target="_blank" rel="noreferrer">{r.fromAddress}</a></dd>
         <dt className="text-neutral-500">To</dt>
         <dd className="font-mono break-all"><a className="underline decoration-neutral-400" href={basescanAddress(r.toAddress)} target="_blank" rel="noreferrer">{r.toAddress}</a></dd>
+        <dt className="text-neutral-500">Watched as</dt>
+        <dd className="flex flex-wrap gap-2">
+          {rows.map((w) => (
+            <span key={w.watchedAddress} className="inline-flex items-center gap-1 font-mono text-xs">
+              <Direction d={w.direction} /> {shortHex(w.watchedAddress)}
+            </span>
+          ))}
+        </dd>
         <dt className="text-neutral-500">Time</dt>
         <dd className="font-mono">{isoTime(r.blockTimestamp)}</dd>
         <dt className="text-neutral-500">Block</dt>
         <dd className="font-mono">{r.blockNumber.toString()}</dd>
-        <dt className="text-neutral-500">Confirmations</dt>
+        <dt className="text-neutral-500">Depth</dt>
         <dd className="font-mono">
           <Suspense fallback="…">
-            <Confirmations block={r.blockNumber} />
+            <Depth block={r.blockNumber} />
           </Suspense>
         </dd>
         <dt className="text-neutral-500">Transaction</dt>
@@ -72,9 +80,16 @@ async function Receipt({ txHash, logIndex }: { txHash: string; logIndex: number 
   );
 }
 
-async function Confirmations({ block }: { block: bigint }) {
-  const head = await publicClient()
-    .getBlockNumber()
-    .catch(() => null);
-  return <>{head === null ? "unavailable" : (head - block).toString()}</>;
+/** Blocks between this receipt and the latest / safe / finalized heads, read live. */
+async function Depth({ block }: { block: bigint }) {
+  const client = publicClient();
+  const read = (tag: "latest" | "safe" | "finalized") => headBlockNumber(client, tag).catch(() => null);
+  const [latest, safe, finalized] = await Promise.all([read("latest"), read("safe"), read("finalized")]);
+  const fmt = (n: bigint | null) => (n === null ? "?" : (n - block).toString());
+  return (
+    <>
+      {fmt(latest)} below latest · {fmt(safe)} below safe · {fmt(finalized)} below finalized
+      <span className="text-neutral-500"> (stored at {headTag()})</span>
+    </>
+  );
 }

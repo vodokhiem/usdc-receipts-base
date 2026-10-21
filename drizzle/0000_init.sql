@@ -4,7 +4,8 @@ CREATE TABLE "ingest_runs" (
 	"from_block" bigint,
 	"to_block" bigint,
 	"logs_found" integer DEFAULT 0 NOT NULL,
-	"rows_upserted" integer DEFAULT 0 NOT NULL,
+	"rows_written" integer DEFAULT 0 NOT NULL,
+	"rows_deleted" integer DEFAULT 0 NOT NULL,
 	"error" text,
 	"started_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"finished_at" timestamp with time zone

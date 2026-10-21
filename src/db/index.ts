@@ -14,7 +14,7 @@ import postgres from "postgres";
 import { PGlite } from "@electric-sql/pglite";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
-import { databaseUrl } from "@/lib/env";
+import { databaseUrl, requireDatabaseUrl } from "@/lib/env";
 
 /** Driver-agnostic handle: the same query code runs on postgres-js and PGlite. */
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
@@ -31,12 +31,25 @@ export function getDb(): Promise<Db> {
 async function open(): Promise<Db> {
   const url = databaseUrl();
   if (url) {
+    // Schema changes are applied by `npm run db:migrate`, not on cold start: several serverless
+    // instances starting at once must not race each other on the migration table.
     const sql = postgres(url, { max: 5, prepare: false });
-    const db = drizzlePg(sql, { schema });
-    await migratePg(db, { migrationsFolder });
-    return db;
+    return drizzlePg(sql, { schema });
+  }
+  if (requireDatabaseUrl()) {
+    throw new Error("DATABASE_URL is not set. The embedded PGlite database is for local development only.");
   }
   return openPglite(path.join(process.cwd(), "data", "pglite"));
+}
+
+/** Apply pending migrations to the Postgres in DATABASE_URL. Used by scripts/migrate.ts. */
+export async function migrateDatabase(url: string): Promise<void> {
+  const sql = postgres(url, { max: 1, prepare: false });
+  try {
+    await migratePg(drizzlePg(sql, { schema }), { migrationsFolder });
+  } finally {
+    await sql.end();
+  }
 }
 
 /** Exposed for tests, which use an in-memory instance (`dataDir` undefined). */
